@@ -1,0 +1,579 @@
+---
+output: 
+  flexdashboard::flex_dashboard:
+    orientation: rows
+    vertical_layout: scroll
+knit: (function(inputFile, encoding) {
+  rmarkdown::render(inputFile, encoding = encoding, output_dir = "outputs/")})
+---
+
+<br>
+
+<!-- bibliotecas, funções e parâmetros -->
+
+```{r include=FALSE, echo=FALSE}
+source("R/libraries.R")
+source("R/functions.R")
+
+options(scipen = 999)
+options(digits = 3)
+
+if(!fs::dir_exists("outputs")) fs::dir_create("outputs")
+
+par <- list(
+  mycolors = c("#276BB1", "#FFA200", "#3399CC", "#8093A3", "#D89716"), # E6AB02
+  months = c(paste0("0", seq(3, 9, 3)), 12),
+  month_margin = "06",
+  month_year = c("jul/(21|22)", "jul/22"),
+  years_fin = 2020:2021,
+  years_benef = 2022,
+  years_tabnet = 15:22,
+  tri = c("2º", "2022"),
+  tri_fin = "4º"
+)
+```
+
+---
+title: "Mercado planos médico-hospitalares `r par$tri[1]`/`r par$years_benef`"
+---
+
+<!-- dados -->
+
+```{r setup, include=FALSE, echo=FALSE}
+c(
+  totaltri,
+  medgtri,
+  financeiro_2,
+  fat_total,
+  desp_total,
+  regiao_2,
+  var_reg,
+  mod_1,
+  associadas,
+  total_benef,
+  var_a,
+  perc_a,
+  reg_total_3,
+  medgrupo,
+  beneficiarios,
+  fat_var_1,
+  fat_var_2,
+  fat_var_3,
+  fat_var_fac,
+  fin_medg,
+  financeiro_anual_2,
+  desmp_ind,
+  xform,
+  mes_fin
+) %<-% dados_dash_sinamge(par)
+```
+
+# Desempenho Global
+
+## Row
+
+### foi o crescimento do número de beneficiários no `r par$tri[1]` trimestre de `r par$years_benef`.
+
+```{r}
+flexdashboard::valueBox(
+  glue::glue("{totaltri}%"),
+  icon = "fa-arrow-alt-circle-up",
+  color = par$mycolors[1]
+)
+```
+
+### dos beneficiários estão na modalidade Medicina de Grupo.
+
+```{r}
+flexdashboard::valueBox(
+  glue::glue("{medgtri}%"),
+  icon = "fas fa-hospital",
+  color = par$mycolors[2]
+)
+```
+
+```{r}
+fat_total_cres <- financeiro_2 |>
+  dplyr::summarise(receita_de_contraprestacoes = round(100 * ((receita_de_contraprestacoes[2] / receita_de_contraprestacoes[1]) - 1), 1)) |>
+  dplyr::pull()
+```
+
+### foi o faturamento das operadoras com receitas de contraprestações no `r par$tri_fin` trimestre de `r par$years_fin[2]`, crescimento de `r fat_total_cres`%.
+
+```{r}
+flexdashboard::valueBox(
+  glue::glue("{round(fat_total, 1)} bi"),
+  icon = "fa-arrow-alt-circle-up",
+  color = par$mycolors[3]
+)
+```
+
+```{r}
+desp_total_cres <- financeiro_2 |>
+  dplyr::summarise(despesa_assistencial = round(100 * ((despesa_assistencial[2] / despesa_assistencial[1]) - 1), 1)) |>
+  dplyr::pull()
+```
+
+### foi o valor gasto com despesas assistenciais no `r par$tri_fin` trimestre de `r par$years_fin[2]`, aumento de `r desp_total_cres`%.
+
+```{r}
+flexdashboard::valueBox(
+  glue::glue("{round(desp_total, 1)} bi"),
+  icon = "fa-arrow-alt-circle-up",
+  color = par$mycolors[4]
+)
+```
+
+## Row
+
+### 
+
+```{r}
+plotly::plot_ly(
+  data = regiao_2,
+  x = ~`Regiões`,
+  y = ~regiao_2[[2]],
+  type = "bar",
+  name = colnames(regiao_2)[[2]],
+  text = ~ regiao_2[[2]],
+  textposition = "outside",
+  marker = list(color = par$mycolors[1])
+) |>
+  plotly::add_trace(
+    data = regiao_2,
+    x = ~`Regiões`,
+    y = ~ regiao_2[[3]],
+    name = colnames(regiao_2)[[3]],
+    text = ~ regiao_2[[3]],
+    textposition = "outside",
+    marker = list(color = par$mycolors[2])
+  ) |>
+  plotly::layout(
+    autosize = T,
+    title = "Beneficiários por Região",
+    uniformtext = list(
+      minsize = 8,
+      mode = "hide"
+    ),
+    yaxis = list(
+      title = "Em milhões",
+      showgrid = FALSE,
+      showticklabels = FALSE,
+      range = c(0, 40)
+    ),
+    barmode = "group"
+  )
+```
+
+### 
+
+```{r}
+plotly::plot_ly(
+  data = var_reg,
+  x = ~trimestre
+) |>
+  plotly::add_trace(
+    y = ~Norte,
+    name = "Norte",
+    mode = "lines+markers",
+    marker = list(color = par$mycolors[1]),
+    line = list(color = par$mycolors[1])
+  ) |>
+  plotly::add_trace(
+    y = ~Nordeste,
+    name = "Nordeste",
+    mode = "lines+markers",
+    marker = list(color = par$mycolors[2]),
+    line = list(color = par$mycolors[2])
+  ) |>
+  plotly::add_trace(
+    y = ~Sul,
+    name = "Sul",
+    mode = "lines+markers",
+    marker = list(color = par$mycolors[3]),
+    line = list(color = par$mycolors[3])
+  ) |>
+  plotly::add_trace(
+    y = ~Sudeste,
+    name = "Sudeste",
+    mode = "lines+markers",
+    marker = list(color = par$mycolors[4]),
+    line = list(color = par$mycolors[4])
+  ) |>
+  plotly::add_trace(
+    y = ~`Centro-Oeste`,
+    name = "Centro-Oeste",
+    mode = "lines+markers",
+    marker = list(color = par$mycolors[5]),
+    line = list(color = par$mycolors[5])
+  ) |>
+  plotly::layout(
+    autosize = T,
+    title = "Variação Anual Beneficiários - por Região",
+    uniformtext = list(minsize = 8, mode = "hide"),
+    yaxis = list(
+      title = "Var. Anual",
+      showgrid = FALSE,
+      tickformat = ".1%"
+    ),
+    xaxis = list(title = "")
+  )
+```
+
+## Row
+
+### 
+
+```{r}
+plotly::plot_ly(
+  data = mod_1,
+  x = ~Modalidade,
+  y = ~mod_1[[2]],
+  type = "bar",
+  name = colnames(mod_1)[[2]],
+  text = ~ mod_1[[2]],
+  textposition = "outside",
+  marker = list(color = par$mycolors[1])
+) |>
+  plotly::add_trace(
+    data = mod_1,
+    x = ~Modalidade,
+    y = ~ mod_1[[3]],
+    name = colnames(mod_1)[[3]],
+    text = ~ mod_1[[3]],
+    textposition = "outside",
+    marker = list(color = par$mycolors[2])
+  ) |>
+  plotly::layout(
+    autosize = T,
+    xaxis = xform,
+    title = "Beneficiários por Modalidade",
+    uniformtext = list(
+      minsize = 8,
+      mode = "hide"
+    ),
+    yaxis = list(
+      title = "Em milhões",
+      showgrid = FALSE,
+      showticklabels = FALSE,
+      range = c(0, 60)
+    ),
+    barmode = "group"
+  )
+```
+
+# Desempenho Associadas
+
+## Row
+
+### operadoras associadas.
+
+```{r}
+flexdashboard::valueBox(
+  nrow(associadas),
+  icon = "fa-user-md",
+  color = par$mycolors[1]
+)
+```
+
+### é o número de beneficiários das operadoras associadas (planos médicos e odontológicos).
+
+```{r}
+flexdashboard::valueBox(
+  glue::glue("{total_benef} milhões"),
+  icon = "fa-file-medical-alt",
+  color = par$mycolors[2]
+)
+```
+
+### é o número de UF em que as associadas Abramge estão presentes.
+
+```{r}
+flexdashboard::valueBox(
+  20,
+  icon = "fa-map-marker-alt",
+  color = par$mycolors[1]
+)
+```
+
+### foi o crescimento das associadas entre o `r par$tri[1]` tri de `r (par$years_benef - 1)` e `r par$years_benef`.
+
+```{r}
+flexdashboard::valueBox(
+  glue::glue("{var_a}%"),
+  icon = "fa-arrow-alt-circle-up",
+  color = par$mycolors[2]
+)
+```
+
+### do mercado de planos médico-hospitalares é coberto por uma operadora associada.
+
+```{r}
+flexdashboard::valueBox(
+  glue::glue("{round(100 * perc_a, 1)}%"),
+  icon = "fa-chart-pie",
+  color = par$mycolors[4]
+)
+```
+
+## Row
+
+### 
+
+```{r, echo=FALSE}
+map <- geobr::read_region(
+  year = 2010,
+  simplified = TRUE,
+  showProgress = FALSE
+) |>
+  dplyr::left_join(
+    reg_total_3,
+    by = "code_region"
+  ) |>
+  ggplot() +
+  geom_sf(
+    aes(
+      fill = taxa,
+      color = taxa
+    ),
+    color = NA
+  ) +
+  geom_sf_text(
+    aes(label = paste0(round(taxa * 100, 1), "%")),
+    size = 5
+  ) +
+  guides(fill = "none") +
+  scale_fill_gradientn(
+    colors = tmaptools::get_brewer_pal("Blues", n = 5),
+    name = "% associadas Abramge"
+  ) +
+  theme_minimal() +
+  theme(
+    panel.border = element_blank(),
+    panel.grid = element_blank(),
+    plot.title = element_text(hjust = 0.5, size = 16, family = "calibri"),
+    axis.text.x = element_blank(), axis.title.x = element_blank(),
+    axis.text.y = element_blank(), axis.title.y = element_blank(),
+    legend.position = "none"
+  ) +
+  ggtitle("Representatividade das Associadas por Região \n (em % do total de beneficiários da região)")
+
+plotly::ggplotly(map)
+```
+
+### 
+
+```{r}
+medgrupo |>
+  dplyr::mutate(
+    associada = dplyr::case_when(
+      associada == 1 ~ "Associadas",
+      TRUE ~ "Não associadas"
+    )
+  ) |>
+  plotly::plot_ly(
+    labels = ~associada,
+    values = ~percentual,
+    marker = list(colors = c(par$mycolors[1], par$mycolors[2]))
+  ) |>
+  plotly::add_pie(hole = 0.1) |>
+  plotly::layout(
+    autosize = T,
+    title = glue::glue("Medicina de Grupo - {par$years_benef}"),
+    xaxis = list(
+      zeroline = F,
+      showline = F,
+      showticklabels = F,
+      showgrid = F
+    ),
+    yaxis = list(
+      zeroline = F,
+      showline = F,
+      showticklabels = F,
+      showgrid = F
+    )
+  )
+```
+
+## Row
+
+### 
+
+```{r}
+plotly::plot_ly(
+  data = beneficiarios,
+  x = ~trimestre,
+  line = list(color = c(par$mycolors[1], par$mycolors[2]))
+) |>
+  plotly::add_trace(
+    y = ~var_tri_assoc,
+    name = "Associadas Abramge",
+    mode = "lines+markers",
+    marker = list(color = par$mycolors[1])
+  ) |>
+  plotly::add_trace(
+    y = ~var_tri_mercado,
+    name = "Mercado Total",
+    mode = "lines+markers",
+    marker = list(color = par$mycolors[2])
+  ) |>
+  plotly::layout(
+    autosize = T,
+    title = "Variação Anual de Beneficiários",
+    uniformtext = list(minsize = 8, mode = "hide"),
+    yaxis = list(title = "Var. Anual", showgrid = FALSE, tickformat = ".1%"),
+    xaxis = list(title = "")
+  )
+```
+
+# Desempenho Financeiro
+
+## Row
+
+### foi o crescimento das receitas de contraprestações das associadas entre o `r par$tri_fin` trimestre de `r par$years_fin[1]` e `r par$years_fin[2]`.
+
+```{r}
+flexdashboard::valueBox(
+  glue::glue("{fat_var_1}%"),
+  icon = "fa-arrow-alt-circle-up",
+  color = par$mycolors[1]
+)
+```
+
+### foi o aumento da despesa assistencial das associadas neste mesmo período.
+
+```{r}
+flexdashboard::valueBox(
+  glue::glue("{fat_var_2}%"),
+  icon = "fa-arrow-alt-circle-up",
+  color = par$mycolors[2]
+)
+```
+
+### foi a variação do Resultado Operacional Bruto (não incluindo impostos) das associadas neste período.
+
+```{r}
+flexdashboard::valueBox(
+  glue::glue("{fat_var_3}%"),
+  icon = "fa-arrow-alt-circle-down",
+  color = par$mycolors[3]
+)
+```
+
+## Row
+
+### 
+
+```{r}
+plotly::plot_ly(
+  fat_var_fac,
+  x = ~tipo,
+  y = ~`2020`,
+  type = "bar",
+  name = glue::glue("Jan-{mes_fin[1]}"),
+  text = ~`2020`,
+  textposition = "outside",
+  marker = list(color = par$mycolors[1])
+) |>
+  plotly::add_trace(
+    y = ~`2021`,
+    name = glue::glue("Jan-{mes_fin[2]}"),
+    text = ~`2021`,
+    textposition = "outside",
+    marker = list(color = par$mycolors[2])
+  ) |>
+  plotly::layout(
+    title = "Associadas Abramge",
+    uniformtext = list(minsize = 8, mode = "hide"),
+    autosize = T,
+    yaxis = list(
+      title = "Em bilhões de R$",
+      showgrid = FALSE,
+      showticklabels = FALSE,
+      range = c(0, 65)
+    ),
+    xaxis = list(title = "")
+  )
+```
+
+### 
+
+```{r}
+plotly::plot_ly(
+  fin_medg,
+  x = ~tipo,
+  y = ~`2020`,
+  type = "bar",
+  name = glue::glue("Jan-{mes_fin[1]}"),
+  text = ~`2020`,
+  textposition = "outside",
+  marker = list(color = par$mycolors[1])
+) |>
+  plotly::add_trace(
+    y = ~`2021`,
+    name = glue::glue("Jan-{mes_fin[2]}"),
+    text = ~`2021`,
+    textposition = "outside",
+    marker = list(color = par$mycolors[2])
+  ) |>
+  plotly::layout(
+    autosize = T,
+    title = "Total Medicinas de Grupo",
+    uniformtext = list(minsize = 8, mode = "hide"),
+    yaxis = list(
+      title = "Em bilhões de R$",
+      showgrid = FALSE,
+      showticklabels = FALSE,
+      range = c(0, 80)
+    ),
+    xaxis = list(title = "")
+  )
+```
+
+## Row
+
+### 
+
+```{r}
+plotly::plot_ly(
+  financeiro_anual_2,
+  x = ~ano,
+  line = list(color = c(par$mycolors[1], par$mycolors[2]))
+) |>
+  plotly::add_trace(
+    y = ~`Receitas de Contraprestações`,
+    name = "Receita de Contraprestações",
+    mode = "lines+markers",
+    marker = list(color = par$mycolors[1])
+  ) |>
+  plotly::add_trace(
+    y = ~`Despesa Assistencial`,
+    name = "Despesa Assistencial",
+    mode = "lines+markers",
+    marker = list(color = par$mycolors[2])
+  ) |>
+  plotly::layout(
+    autosize = T,
+    title = glue::glue("Receitas e despesas das operadoras médico-hospitalares no {par$tri_fin} trimestre de {par$years_fin[2]}"),
+    uniformtext = list(
+      minsize = 8,
+      mode = "hide"
+    ),
+    yaxis = list(
+      title = "Em bi de R$",
+      showgrid = FALSE
+    ),
+    xaxis = list(title = "")
+  )
+```
+
+# Desempenho Individual
+
+## Row
+
+### 
+
+```{r}
+kableExtra::kbl(desmp_ind) |>
+  kable_styling(bootstrap_options = c("striped", "hover"))
+```
